@@ -1,0 +1,11 @@
+.venv
+src/__pycache__
+/data
+/book
+
+# Model files (too large for git)
+models/*.onnx
+models/*.pb
+models/*.tflite
+models/*.pth
+models/*.pt
