@@ -20,6 +20,9 @@ The system uses a pipeline of:
 - **Embedding Generation**: Generates face embeddings using the ArcFace ONNX model
 - **Enrollment**: Enroll new faces with multiple samples for robust recognition
 - **Real-time Recognition**: Recognize faces from camera feed with adjustable threshold
+- **Face Locking & Tracking**: Lock onto specific identities and track them across frames
+- **Action Detection**: Detect face movements, blinks, and smiles in real-time
+- **Action History Recording**: Record timestamped action logs for locked faces
 - **Database Management**: Stores face templates in NPZ format with metadata
 - **Evaluation Tools**: Evaluate recognition accuracy on datasets
 
@@ -76,6 +79,22 @@ The system uses a pipeline of:
 
 ## Usage
 
+### Testing the System
+
+Before running the face lock feature, verify all components are working:
+
+```bash
+python test_face_lock.py
+```
+
+This will check:
+- Required dependencies (OpenCV, NumPy, MediaPipe, ONNX Runtime)
+- Face lock modules
+- ArcFace model file
+- Face database
+- Camera accessibility
+- Action detector initialization
+
 ### Enrollment
 
 To enroll new faces into the database:
@@ -111,6 +130,35 @@ python -m src.recognize
 
 The system displays recognized faces with labels and confidence scores.
 
+### Face Locking (NEW)
+
+To lock onto a specific enrolled identity and track their actions:
+
+```bash
+python -m src.face_lock
+```
+
+**Features**:
+- Lock onto a specific enrolled identity
+- Track face consistently across frames
+- Detect actions: face movement (left/right), eye blinks, smiles
+- Record action history to timestamped file
+
+**Controls**:
+
+- **l**: Lock onto detected target face
+- **u**: Unlock current face
+- **q**: Quit
+- **r**: Reload database
+- **+/-**: Adjust recognition threshold
+
+**Action Detection**:
+- **Face Movement**: Detects when face moves left or right
+- **Eye Blinks**: Detects eye closure using Eye Aspect Ratio (EAR)
+- **Smiles**: Detects smiling using Mouth Aspect Ratio (MAR)
+
+**Output**: Action history saved to `data/history/<name>_history_<timestamp>.txt`
+
 ### Evaluation
 
 To evaluate the system on a dataset:
@@ -131,7 +179,8 @@ face_recognition_arcface_onnx/
 ├── data/
 │   ├── db/                  # Face database (face_db.npz, face_db.json)
 │   ├── debug_aligned/       # Debug aligned face images
-│   └── enroll/              # Enrollment data per identity
+│   ├── enroll/              # Enrollment data per identity
+│   └── history/             # Action history logs (face locking)
 ├── models/
 │   └── embedder_arcface.onnx  # Pre-trained ArcFace model
 └── src/
@@ -141,6 +190,7 @@ face_recognition_arcface_onnx/
     ├── embed.py             # Embedding generation
     ├── enroll.py            # Enrollment module
     ├── evaluate.py          # Evaluation tools
+    ├── face_lock.py         # Face locking and action detection
     ├── haar_5pt.py          # Haar cascade with 5-point alignment
     ├── landmarks.py         # Facial landmark detection
     ├── recognize.py         # Real-time recognition
