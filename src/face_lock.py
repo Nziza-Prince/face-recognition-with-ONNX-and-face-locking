@@ -315,7 +315,7 @@ class FaceLockManager:
                     continue
             
             # Verify identity
-            aligned = align_face_5pt(frame, face.kps, out_size=(112, 112))
+            aligned, _ = align_face_5pt(frame, face.kps, out_size=(112, 112))
             emb = embedder.embed(aligned)
             mr = matcher.match(emb)
             
@@ -471,7 +471,7 @@ def main():
             else:
                 # Show all faces, allow locking
                 for face in faces:
-                    aligned = align_face_5pt(frame, face.kps, out_size=(112, 112))
+                    aligned, _ = align_face_5pt(frame, face.kps, out_size=(112, 112))
                     emb = embedder.embed(aligned)
                     mr = matcher.match(emb)
                     
@@ -516,7 +516,7 @@ def main():
                 if not lock_mgr.is_locked and faces:
                     # Try to lock onto target face
                     for face in faces:
-                        aligned = align_face_5pt(frame, face.kps, out_size=(112, 112))
+                        aligned, _ = align_face_5pt(frame, face.kps, out_size=(112, 112))
                         emb = embedder.embed(aligned)
                         mr = matcher.match(emb)
                         if lock_mgr.try_lock(face, mr.name):
