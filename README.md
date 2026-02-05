@@ -41,13 +41,13 @@ The system uses a pipeline of:
 3. **Install Dependencies**:
 
    ```bash
-   pip install opencv-python numpy onnxruntime mediapipe
+   pip install opencv-python numpy onnxruntime mediapipe==0.10.9
    ```
 
    - `opencv-python`: For image processing and Haar cascades
    - `numpy`: For numerical operations
    - `onnxruntime`: For running ONNX models
-   - `mediapipe`: For facial landmark detection (optional, but recommended)
+   - `mediapipe==0.10.9`: For facial landmark detection (specific version required)
 
 4. **Download the ArcFace Model**:
 
