@@ -51,7 +51,7 @@ class EnrollConfig:
     save_crops: bool = True
     crops_dir: Path = Path("data/enroll")
 
-    samples_needed: int = 15
+    samples_needed: int = 25  # Increased from 15 for better accuracy
     auto_capture_every_s: float = 0.25
     max_existing_crops: int = 300
 
