@@ -29,13 +29,18 @@ def main():
         raise RuntimeError(f"Failed to load cascade: {cascade_path}")
 
     # FaceMesh
-    fm = mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5,
-    )
+    try:
+        fm = mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=False,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        )
+    except Exception as e:
+        print(f"ERROR: MediaPipe FaceMesh initialization failed: {e}")
+        print("Please install MediaPipe: pip install mediapipe")
+        return
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():

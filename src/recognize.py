@@ -210,20 +210,33 @@ class HaarFaceMesh5pt:
         if self.face_cascade.empty():
             raise RuntimeError(f"Failed to load Haar cascade: {haar_xml}")
 
-        if mp is None:
-            raise RuntimeError(
-                f"mediapipe import failed: {MP_IMPORT_ERROR}\n"
-                f"Install: pip install mediapipe==0.10.21"
-            )
-
-        # IMPORTANT: we run FaceMesh on ROI (one face per ROI), so max_num_faces=1
-        self.mesh = mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
+        # MediaPipe FaceMesh
+        self.mesh = None
+        self._use_mediapipe = False
+        
+        if mp is not None:
+            try:
+                # Try to initialize MediaPipe FaceMesh
+                # IMPORTANT: we run FaceMesh on ROI (one face per ROI), so max_num_faces=1
+                self.mesh = mp.solutions.face_mesh.FaceMesh(
+                    static_image_mode=False,
+                    max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                )
+                self._use_mediapipe = True
+                if self.debug:
+                    print("[recognize] MediaPipe FaceMesh initialized successfully")
+            except Exception as e:
+                if self.debug:
+                    print(f"[recognize] MediaPipe FaceMesh failed to initialize: {e}")
+                    print("[recognize] Falling back to Haar-only detection")
+                self.mesh = None
+                self._use_mediapipe = False
+        else:
+            if self.debug:
+                print("[recognize] MediaPipe not available, using Haar-only detection")
 
         # 5pt indices (same as your working file)
         self.IDX_LEFT_EYE = 33
@@ -245,32 +258,41 @@ class HaarFaceMesh5pt:
         return faces.astype(np.int32)  # (x, y, w, h)
 
     def _roi_facemesh_5pt(self, roi_bgr: np.ndarray) -> Optional[np.ndarray]:
+        if not self._use_mediapipe or self.mesh is None:
+            return None
+            
         H, W = roi_bgr.shape[:2]
         if H < 20 or W < 20:
             return None
-        rgb = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2RGB)
-        res = self.mesh.process(rgb)
-        if not res.multi_face_landmarks:
+        
+        try:
+            rgb = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2RGB)
+            res = self.mesh.process(rgb)
+            if not res.multi_face_landmarks:
+                return None
+
+            lm = res.multi_face_landmarks[0].landmark
+            idxs = [self.IDX_LEFT_EYE, self.IDX_RIGHT_EYE, self.IDX_NOSE_TIP, self.IDX_MOUTH_LEFT,
+                    self.IDX_MOUTH_RIGHT]
+
+            pts = []
+            for i in idxs:
+                p = lm[i]
+                pts.append([p.x * W, p.y * H])
+
+            kps = np.array(pts, dtype=np.float32)
+
+            # enforce left/right ordering
+            if kps[0, 0] > kps[1, 0]:
+                kps[[0, 1]] = kps[[1, 0]]
+            if kps[3, 0] > kps[4, 0]:
+                kps[[3, 4]] = kps[[4, 3]]
+
+            return kps
+        except Exception as e:
+            if self.debug:
+                print(f"[recognize] MediaPipe processing failed: {e}")
             return None
-
-        lm = res.multi_face_landmarks[0].landmark
-        idxs = [self.IDX_LEFT_EYE, self.IDX_RIGHT_EYE, self.IDX_NOSE_TIP, self.IDX_MOUTH_LEFT,
-                self.IDX_MOUTH_RIGHT]
-
-        pts = []
-        for i in idxs:
-            p = lm[i]
-            pts.append([p.x * W, p.y * H])
-
-        kps = np.array(pts, dtype=np.float32)
-
-        # enforce left/right ordering
-        if kps[0, 0] > kps[1, 0]:
-            kps[0, 1] = kps[1, 0]
-        if kps[3, 0] > kps[4, 0]:
-            kps[3, 1] = kps[4, 3]
-
-        return kps
 
     def detect(self, frame_bgr: np.ndarray, max_faces: int = 5) -> List[FaceDet]:
         H, W = frame_bgr.shape[:2]
@@ -432,7 +454,7 @@ def main():
                 cv2.circle(vis, (int(x), int(y)), 2, (0, 255, 0), -1)
 
             # align -> embed -> match
-            aligned = align_face_5pt(frame, f.kps, out_size=(112, 112))
+            aligned, _ = align_face_5pt(frame, f.kps, out_size=(112, 112))
             emb = embedder.embed(aligned)
             mr = matcher.match(emb)
 
